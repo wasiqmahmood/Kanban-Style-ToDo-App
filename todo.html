@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Advanced Kanban ToDo</title>
+    <style>
+      :root {
+        --bg: #f4f7fa;
+        --card: #ffffff;
+        --text: #333;
+        --accent: #0052cc;
+        --accent-light: #2684ff;
+        --shadow: rgba(0, 0, 0, 0.1);
+        --radius: 0.5rem;
+        --transition: 0.2s;
+        --input-bg: #fff;
+        --input-border: #dfe1e6;
+        --input-text: #333;
+      }
+      [data-theme="dark"] {
+        --bg: #1f2428;
+        --card: #2c2f33;
+        --text: #e1e4e8;
+        --accent: #2684ff;
+        --accent-light: #4c9aff;
+        --shadow: rgba(0, 0, 0, 0.5);
+        --input-bg: #3a3d42;
+        --input-border: #55575f;
+        --input-text: #e1e4e8;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", sans-serif;
+        padding: 1.5rem;
+        transition: background var(--transition), color var(--transition);
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+      }
+      h1 {
+        font-size: 1.75rem;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        width: 100%;
+      }
+      .controls > * {
+        min-width: 140px;
+      }
+      .controls input,
+      .controls select,
+      .controls button {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        border-radius: var(--radius);
+        padding: 0.5rem 0.75rem;
+        color: var(--input-text);
+        font-size: 0.9rem;
+        transition: border-color var(--transition), box-shadow var(--transition);
+      }
+      .controls input:focus,
+      .controls select:focus,
+      .controls button:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(38, 132, 255, 0.2);
+      }
+      .toggle-btn {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        flex: 0 0 auto;
+      }
+      #board {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1rem;
+      }
+      .column {
+        background: var(--card);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 4px var(--shadow);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .column h2 {
+        background: var(--accent);
+        color: #fff;
+        padding: 0.75rem;
+        font-size: 1.1rem;
+      }
+      .tasks {
+        flex: 1;
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        max-height: 60vh;
+        overflow-y: auto;
+      }
+      .task {
+        background: var(--bg);
+        border: 1px solid var(--input-border);
+        border-radius: var(--radius);
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        cursor: grab;
+        transition: transform var(--transition), box-shadow var(--transition);
+      }
+      .task:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px var(--shadow);
+      }
+      .task.done {
+        opacity: 0.6;
+        text-decoration: line-through;
+      }
+      .task-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+      .task-header span {
+        font-weight: 500;
+      }
+      .task-header .assignee {
+        font-size: 0.85rem;
+        color: var(--accent-light);
+      }
+      .task-actions button {
+        background: transparent;
+        border: none;
+        color: var(--text);
+        margin-left: 0.5rem;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      .task-actions button.cancel {
+        color: #e02424;
+      }
+      .task-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-bottom: 0.5rem;
+      }
+      .tag {
+        background: var(--accent-light);
+        color: #fff;
+        padding: 0.2rem 0.5rem;
+        border-radius: var(--radius);
+        font-size: 0.75rem;
+      }
+      .subtasks,
+      .comments {
+        margin-bottom: 0.5rem;
+      }
+      .subtask,
+      .comment {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .add-subtask,
+      .add-comment {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+      .add-subtask input,
+      .add-comment input {
+        flex: 1;
+        padding: 0.3rem;
+        font-size: 0.85rem;
+        border: 1px solid var(--input-border);
+        border-radius: var(--radius);
+        background: var(--input-bg);
+      }
+      .add-subtask button,
+      .add-comment button {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        padding: 0.3rem 0.6rem;
+        border-radius: var(--radius);
+        cursor: pointer;
+      }
+      .add-task {
+        background: var(--card);
+        padding: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        border-top: 1px solid var(--input-border);
+      }
+      .add-task input,
+      .add-task select {
+        flex: 1 1 140px;
+        min-width: 0;
+        padding: 0.5rem;
+        font-size: 0.9rem;
+        border: 1px solid var(--input-border);
+        border-radius: var(--radius);
+        background: var(--input-bg);
+      }
+      .add-task button {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: background var(--transition);
+      }
+      .add-task button:hover {
+        background: var(--accent-light);
+      }
+
+      @media (max-width: 600px) {
+        .controls {
+          flex-direction: column;
+        }
+        .controls > * {
+          width: 100%;
+        }
+        .add-task {
+          flex-direction: column;
+        }
+        .add-task input,
+        .add-task select,
+        .add-task button {
+          width: 100%;
+        }
+        #board {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body data-theme="light">
+    <div class="container">
+      <header>
+        <h1>Kanban ToDo</h1>
+        <div class="controls">
+          <button class="toggle-btn">Toggle Theme</button>
+          <input id="search" type="text" placeholder="Search tasks…" />
+          <select id="filter-tag">
+            <option value="">All tags</option>
+          </select>
+          <input id="new-tag" type="text" placeholder="New tag…" />
+          <button id="add-tag-btn">Add Tag</button>
+        </div>
+      </header>
+      <div id="board">
+        <div class="column" data-status="unassigned">
+          <h2>Unassigned</h2>
+          <div class="tasks"></div>
+          <div class="add-task">
+            <input id="task-input" type="text" placeholder="New task…" />
+            <select id="task-tag-select">
+              <option value="">No tag</option>
+            </select>
+            <select id="assignee-select">
+              <option value="">Unassigned</option>
+            </select>
+            <button id="add-task-btn">Add Task</button>
+          </div>
+        </div>
+        <div class="column" data-status="in-progress">
+          <h2>In Progress</h2>
+          <div class="tasks"></div>
+        </div>
+        <div class="column" data-status="done">
+          <h2>Done</h2>
+          <div class="tasks"></div>
+        </div>
+        <div class="column" data-status="cancel">
+          <h2>Cancel</h2>
+          <div class="tasks"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const defaults = {
+          tags: ["Remote", "On-site", "Remote+On-site", "Developer"],
+          members: ["Alice", "Bob", "Charlie", "Dana"],
+        };
+        const board = document.getElementById("board"),
+          search = document.getElementById("search"),
+          filterTag = document.getElementById("filter-tag"),
+          newTagIn = document.getElementById("new-tag"),
+          addTagBtn = document.getElementById("add-tag-btn"),
+          taskIn = document.getElementById("task-input"),
+          tagSelect = document.getElementById("task-tag-select"),
+          assignSel = document.getElementById("assignee-select"),
+          addTaskBtn = document.getElementById("add-task-btn"),
+          themeBtn = document.querySelector(".toggle-btn");
+
+        let tags = Array.from(
+          new Set([
+            ...(JSON.parse(localStorage.getItem("tags")) || []),
+            ...defaults.tags,
+          ])
+        );
+        let tasks = (JSON.parse(localStorage.getItem("tasks")) || []).map(
+          (t) => ({
+            ...t,
+            subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+            comments: Array.isArray(t.comments) ? t.comments : [],
+          })
+        );
+        let theme = localStorage.getItem("theme") || "light";
+        document.body.setAttribute("data-theme", theme);
+
+        function save() {
+          localStorage.setItem("tags", JSON.stringify(tags));
+          localStorage.setItem("tasks", JSON.stringify(tasks));
+          localStorage.setItem("theme", theme);
+        }
+
+        function renderTags() {
+          filterTag.innerHTML =
+            `<option value="">All tags</option>` +
+            tags.map((t) => `<option value="${t}">${t}</option>`).join("");
+          tagSelect.innerHTML =
+            `<option value="">No tag</option>` +
+            tags.map((t) => `<option value="${t}">${t}</option>`).join("");
+        }
+        function renderMembers() {
+          assignSel.innerHTML =
+            `<option value="">Unassigned</option>` +
+            defaults.members.map((m) => `<option>${m}</option>`).join("");
+        }
+
+        function createTaskEl(task) {
+          const el = document.createElement("div");
+          el.className = "task";
+          el.draggable = true;
+          el.dataset.id = task.id;
+          if (task.status === "done") el.classList.add("done");
+
+          const hdr = document.createElement("div");
+          hdr.className = "task-header";
+          const ttl = document.createElement("span");
+          ttl.textContent = task.title;
+          const mem = document.createElement("span");
+          mem.className = "assignee";
+          mem.textContent = task.assigned;
+          const act = document.createElement("div");
+          act.className = "task-actions";
+          const ok = document.createElement("button");
+          ok.textContent = "✔";
+          const cn = document.createElement("button");
+          cn.textContent = "✖";
+          cn.className = "cancel";
+          const rm = document.createElement("button");
+          rm.textContent = "🗑";
+          ok.onclick = () => {
+            task.status = task.status === "done" ? "in-progress" : "done";
+            save();
+            render();
+          };
+          cn.onclick = () => {
+            task.status = "cancel";
+            save();
+            render();
+          };
+          rm.onclick = () => {
+            tasks = tasks.filter((t) => t.id !== task.id);
+            save();
+            render();
+          };
+          act.append(ok, cn, rm);
+          hdr.append(ttl, mem, act);
+          el.append(hdr);
+
+          if (task.tags.length) {
+            const te = document.createElement("div");
+            te.className = "task-tags";
+            task.tags.forEach((tag) => {
+              const d = document.createElement("div");
+              d.className = "tag";
+              d.textContent = tag;
+              te.append(d);
+            });
+            el.append(te);
+          }
+
+          if (task.subtasks.length) {
+            const se = document.createElement("div");
+            se.className = "subtasks";
+            task.subtasks.forEach((s) => {
+              const row = document.createElement("div");
+              row.className = "subtask";
+              const cb = document.createElement("input");
+              cb.type = "checkbox";
+              cb.checked = s.done;
+              cb.onchange = () => {
+                s.done = cb.checked;
+                save();
+              };
+              const lbl = document.createElement("span");
+              lbl.textContent = s.text;
+              row.append(cb, lbl);
+              se.append(row);
+            });
+            el.append(se);
+          }
+          const addSub = document.createElement("div");
+          addSub.className = "add-subtask";
+          const si = document.createElement("input");
+          si.placeholder = "Add subtask…";
+          const sb = document.createElement("button");
+          sb.textContent = "+";
+          sb.onclick = () => {
+            if (!si.value) return;
+            task.subtasks.push({ id: Date.now(), text: si.value, done: false });
+            si.value = "";
+            save();
+            render();
+          };
+          addSub.append(si, sb);
+          el.append(addSub);
+
+          if (task.comments.length) {
+            const ce = document.createElement("div");
+            ce.className = "comments";
+            task.comments.forEach((c) => {
+              const cm = document.createElement("div");
+              cm.className = "comment";
+              cm.textContent = c.text;
+              ce.append(cm);
+            });
+            el.append(ce);
+          }
+          const addCm = document.createElement("div");
+          addCm.className = "add-comment";
+          const ci = document.createElement("input");
+          ci.placeholder = "Add comment…";
+          const cbn = document.createElement("button");
+          cbn.textContent = "✎";
+          cbn.onclick = () => {
+            if (!ci.value) return;
+            task.comments.push({ id: Date.now(), text: ci.value });
+            ci.value = "";
+            save();
+            render();
+          };
+          addCm.append(ci, cbn);
+          el.append(addCm);
+
+          el.addEventListener("dragstart", (e) => {
+            e.dataTransfer.setData("text/plain", task.id);
+          });
+          return el;
+        }
+
+        function render() {
+          ["unassigned", "in-progress", "done", "cancel"].forEach((status) => {
+            const col = board.querySelector(
+              `.column[data-status="${status}"] .tasks`
+            );
+            col.innerHTML = "";
+            tasks
+              .filter((t) => t.status === status)
+              .filter(
+                (t) => !filterTag.value || t.tags.includes(filterTag.value)
+              )
+              .filter(
+                (t) =>
+                  !search.value ||
+                  t.title.toLowerCase().includes(search.value.toLowerCase())
+              )
+              .forEach((t) => col.appendChild(createTaskEl(t)));
+          });
+          renderTags();
+          renderMembers();
+        }
+
+        // drag/drop
+        board.querySelectorAll(".tasks").forEach((c) => {
+          c.addEventListener("dragover", (e) => e.preventDefault());
+          c.addEventListener("drop", (e) => {
+            const id = e.dataTransfer.getData("text/plain");
+            const task = tasks.find((t) => t.id == id);
+            if (task) task.status = c.parentNode.dataset.status;
+            save();
+            render();
+          });
+        });
+
+        addTagBtn.onclick = () => {
+          const v = newTagIn.value.trim();
+          if (v && !tags.includes(v)) {
+            tags.push(v);
+            newTagIn.value = "";
+            save();
+            render();
+          }
+        };
+        addTaskBtn.onclick = () => {
+          if (!taskIn.value) return;
+          tasks.push({
+            id: Date.now(),
+            title: taskIn.value,
+            status: assignSel.value ? "in-progress" : "unassigned",
+            tags: tagSelect.value ? [tagSelect.value] : [],
+            subtasks: [],
+            comments: [],
+            assigned: assignSel.value,
+          });
+          taskIn.value = "";
+          tagSelect.value = "";
+          assignSel.value = "";
+          save();
+          render();
+        };
+
+        search.oninput = render;
+        filterTag.onchange = render;
+        themeBtn.onclick = () => {
+          theme = theme === "light" ? "dark" : "light";
+          document.body.setAttribute("data-theme", theme);
+          save();
+        };
+
+        render();
+      })();
+    </script>
+  </body>
+</html>
