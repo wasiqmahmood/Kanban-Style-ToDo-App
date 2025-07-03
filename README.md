@@ -6,7 +6,7 @@ A fully-featured, responsive Kanban board built with plain HTML, CSS & JavaScrip
 
 ## 🔗 Live Demo
 
-👉 (https://kanban-devops.netlify.app/)
+👉 https://kanban-devops.netlify.app
 
 ---
 
